@@ -49,15 +49,15 @@ let items = [];
 let currentPage = 1;
 const perPage = 50;
 
-// FETCH DATA FROM SHEETDB
-fetch("https://sheetdb.io/api/v1/YOUR_SHEETDB_ID")
+// FETCH DATA FROM SHEETDB (FIXED URL)
+fetch("https://sheetdb.io/api/v1/bykhl1ncapip9")
 .then(res => res.json())
 .then(data => {
     items = data.map(cleanKeys);
     render();
 });
 
-// CLEAN KEYS (remove trailing spaces)
+// CLEAN KEYS (remove trailing spaces from sheetdb)
 function cleanKeys(row) {
     let fixed = {};
     for (let key in row) {
@@ -100,7 +100,6 @@ function render() {
     );
 
     let totalPages = Math.ceil(filtered.length / perPage);
-
     if (currentPage > totalPages) currentPage = totalPages || 1;
 
     let start = (currentPage - 1) * perPage;
