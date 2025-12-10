@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <title>Inventory Finder</title>
-
     <style>
         body {
             font-family: Arial, sans-serif;
             background: #f0f2f5;
-            text-align: center;
             margin: 0;
             padding: 0;
+            text-align: center;
         }
-        h1 { margin-top: 20px; }
-
+        h1 {
+            margin-top: 20px;
+        }
         #search {
             width: 80%;
             padding: 12px;
@@ -22,16 +22,14 @@
             border: 1px solid #ccc;
             font-size: 16px;
         }
-
         table {
             width: 80%;
-            margin: 0 auto;
+            margin: 20px auto;
             border-collapse: collapse;
             background: white;
             border-radius: 10px;
             overflow: hidden;
         }
-
         th, td {
             padding: 14px;
             border-bottom: 1px solid #eee;
@@ -40,30 +38,34 @@
             background: #e8efff;
             font-weight: bold;
         }
-
-        .pagination {
-            margin: 20px;
+        #pagination {
+            margin-top: 20px;
+            font-size: 18px;
         }
-
-        .pagination button {
+        button {
             padding: 8px 14px;
             margin: 5px;
-            border-radius: 6px;
             border: none;
-            background: #4a6cff;
+            border-radius: 6px;
+            background: #4a7afe;
             color: white;
             cursor: pointer;
         }
-        .pagination button:disabled {
-            background: #ccc;
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+        #jumpInput {
+            width: 60px;
+            padding: 6px;
+            margin-left: 10px;
         }
     </style>
 </head>
 <body>
 
 <h1>Inventory Finder</h1>
-
-<input id="search" type="text" placeholder="Search part no, description, category…">
+<input type="text" id="search" placeholder="Search: part no, description, category…">
 
 <table>
     <thead>
@@ -78,30 +80,48 @@
     <tbody id="table-body"></tbody>
 </table>
 
-<div class="pagination">
-    <button id="prev">Prev</button>
-    <span id="page-info"></span>
-    <button id="next">Next</button>
+<div id="pagination">
+    <button id="prevBtn">Prev</button>
+    <span id="pageInfo"></span>
+    <button id="nextBtn">Next</button>
+
+    <span>Jump to page:</span>
+    <input type="number" id="jumpInput" min="1">
+    <button id="jumpBtn">Go</button>
 </div>
 
 <script>
 const apiUrl = "https://sheetdb.io/api/v1/bykhl1ncapip9";
 
-let allItems = [];
-let filteredItems = [];
-let currentPage = 1;
-let rowsPerPage = 50;
+// data
+let items = [];
 
-// ------------------- FETCH ALL DATA ONCE -------------------
+// pagination settings
+let currentPage = 1;
+let perPage = 50; // shows 50 rows per page
+let totalPages = 1;
+
 fetch(apiUrl)
     .then(r => r.json())
     .then(data => {
-        allItems = data;
-        filteredItems = allItems;
-        renderPage();
+        items = data;
+        totalPages = Math.ceil(items.length / perPage);
+        displayPage();
     });
 
-// ------------------- DISPLAY TABLE -------------------
+function displayPage() {
+    const start = (currentPage - 1) * perPage;
+    const end = start + perPage;
+    const rowsToShow = items.slice(start, end);
+    display(rowsToShow);
+
+    document.getElementById("pageInfo").innerText =
+        `Page ${currentPage} / ${totalPages}`;
+
+    document.getElementById("prevBtn").disabled = currentPage === 1;
+    document.getElementById("nextBtn").disabled = currentPage === totalPages;
+}
+
 function display(list) {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
@@ -119,49 +139,64 @@ function display(list) {
     });
 }
 
-// ------------------- PAGINATION -------------------
-function renderPage() {
-    const start = (currentPage - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
+// NEXT page
+document.getElementById("nextBtn").onclick = () => {
+    if (currentPage < totalPages) {
+        currentPage++;
+        displayPage();
+    }
+};
 
-    display(filteredItems.slice(start, end));
-
-    document.getElementById("page-info").innerText =
-        `Page ${currentPage} of ${Math.ceil(filteredItems.length / rowsPerPage)}`;
-
-    document.getElementById("prev").disabled = currentPage === 1;
-    document.getElementById("next").disabled =
-        currentPage === Math.ceil(filteredItems.length / rowsPerPage);
-}
-
-document.getElementById("prev").onclick = () => {
+// PREV page
+document.getElementById("prevBtn").onclick = () => {
     if (currentPage > 1) {
         currentPage--;
-        renderPage();
+        displayPage();
     }
 };
 
-document.getElementById("next").onclick = () => {
-    if (currentPage < Math.ceil(filteredItems.length / rowsPerPage)) {
-        currentPage++;
-        renderPage();
+// JUMP TO PAGE
+document.getElementById("jumpBtn").onclick = () => {
+    let p = parseInt(document.getElementById("jumpInput").value);
+    if (p >= 1 && p <= totalPages) {
+        currentPage = p;
+        displayPage();
     }
 };
 
-// ------------------- SEARCH (LOCAL FAST FILTER) -------------------
+// ADVANCED SMART SEARCH
 document.getElementById("search").addEventListener("input", () => {
-    const q = document.getElementById("search").value.toLowerCase();
+    let q = document.getElementById("search").value.toLowerCase().trim();
+    let keywords = q.split(" ").filter(k => k.length > 0);
 
-    filteredItems = allItems.filter(row =>
-        (row["item no "] || "").toLowerCase().includes(q) ||
-        (row["part no "] || "").toLowerCase().includes(q) ||
-        (row["description "] || "").toLowerCase().includes(q) ||
-        (row["category "] || "").toLowerCase().includes(q) ||
-        (row["qty"] || "").toLowerCase().includes(q)
-    );
+    if (keywords.length === 0) {
+        // reset pagination
+        currentPage = 1;
+        totalPages = Math.ceil(items.length / perPage);
+        displayPage();
+        return;
+    }
+
+    let filtered = items.filter(row => {
+        let combined = (
+            (row["item no "] || "") + " " +
+            (row["part no "] || "") + " " +
+            (row["description "] || "") + " " +
+            (row["category "] || "") + " " +
+            (row["qty"] || "")
+        ).toLowerCase();
+
+        // every word must match
+        return keywords.every(kw => combined.includes(kw));
+    });
 
     currentPage = 1;
-    renderPage();
+    totalPages = Math.ceil(filtered.length / perPage);
+
+    display(filtered.slice(0, perPage));
+
+    document.getElementById("pageInfo").innerText =
+        `Page 1 / ${totalPages}`;
 });
 </script>
 
