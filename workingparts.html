@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Inventory Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+        h1 {
+            margin-top: 20px;
+        }
+        #search {
+            width: 80%;
+            padding: 12px;
+            margin: 20px auto;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+        table {
+            width: 80%;
+            margin: 0 auto;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 14px;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #e8efff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Inventory Finder</h1>
+<input type="text" id="search" placeholder="Search: part no, description, category…">
+
+<table>
+    <thead>
+        <tr>
+            <th>ITEM NO</th>
+            <th>PART NO</th>
+            <th>DESCRIPTION</th>
+            <th>CATEGORY</th>
+            <th>QTY</th>
+        </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+</table>
+
+<script>
+const apiUrl = "https://sheetdb.io/api/v1/bykhl1ncapip9";
+
+let items = [];
+
+fetch(apiUrl)
+    .then(r => r.json())
+    .then(data => {
+        items = data;
+        display(items);
+    });
+
+function display(list) {
+    const tbody = document.getElementById("table-body");
+    tbody.innerHTML = "";
+
+    list.forEach(row => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${row["item no "] || ""}</td>
+                <td>${row["part no "] || ""}</td>
+                <td>${row["description "] || ""}</td>
+                <td>${row["category "] || ""}</td>
+                <td>${row["qty"] || ""}</td>
+            </tr>
+        `;
+    });
+}
+
+document.getElementById("search").addEventListener("input", () => {
+    const q = document.getElementById("search").value.toLowerCase();
+
+    const filtered = items.filter(row =>
+        (row["item no "] || "").toLowerCase().includes(q) ||
+        (row["part no "] || "").toLowerCase().includes(q) ||
+        (row["description "] || "").toLowerCase().includes(q) ||
+        (row["category "] || "").toLowerCase().includes(q) ||
+        (row["qty"] || "").toLowerCase().includes(q)
+    );
+
+    display(filtered);
+});
+</script>
+
+</body>
+</html>
