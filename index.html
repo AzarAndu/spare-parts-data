@@ -8,13 +8,12 @@
         body {
             font-family: Arial, sans-serif;
             background: #f0f2f5;
+            text-align: center;
             margin: 0;
             padding: 0;
-            text-align: center;
         }
-        h1 {
-            margin-top: 20px;
-        }
+        h1 { margin-top: 20px; }
+
         #search {
             width: 80%;
             padding: 12px;
@@ -23,6 +22,7 @@
             border: 1px solid #ccc;
             font-size: 16px;
         }
+
         table {
             width: 80%;
             margin: 0 auto;
@@ -31,6 +31,7 @@
             border-radius: 10px;
             overflow: hidden;
         }
+
         th, td {
             padding: 14px;
             border-bottom: 1px solid #eee;
@@ -38,6 +39,23 @@
         th {
             background: #e8efff;
             font-weight: bold;
+        }
+
+        .pagination {
+            margin: 20px;
+        }
+
+        .pagination button {
+            padding: 8px 14px;
+            margin: 5px;
+            border-radius: 6px;
+            border: none;
+            background: #4a6cff;
+            color: white;
+            cursor: pointer;
+        }
+        .pagination button:disabled {
+            background: #ccc;
         }
     </style>
 </head>
@@ -60,12 +78,30 @@
     <tbody id="table-body"></tbody>
 </table>
 
-<script>
+<div class="pagination">
+    <button id="prev">Prev</button>
+    <span id="page-info"></span>
+    <button id="next">Next</button>
+</div>
 
-// ✨ Your SheetDB API
+<script>
 const apiUrl = "https://sheetdb.io/api/v1/bykhl1ncapip9";
 
-// Display rows in table
+let allItems = [];
+let filteredItems = [];
+let currentPage = 1;
+let rowsPerPage = 50;
+
+// ------------------- FETCH ALL DATA ONCE -------------------
+fetch(apiUrl)
+    .then(r => r.json())
+    .then(data => {
+        allItems = data;
+        filteredItems = allItems;
+        renderPage();
+    });
+
+// ------------------- DISPLAY TABLE -------------------
 function display(list) {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
@@ -83,32 +119,50 @@ function display(list) {
     });
 }
 
-// 🔎 Search-before-fetch (FAST)
-document.getElementById("search").addEventListener("input", async () => {
-    let q = document.getElementById("search").value.trim();
+// ------------------- PAGINATION -------------------
+function renderPage() {
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
 
-    if (q.length === 0) {
-        document.getElementById("table-body").innerHTML = "";
-        return;
+    display(filteredItems.slice(start, end));
+
+    document.getElementById("page-info").innerText =
+        `Page ${currentPage} of ${Math.ceil(filteredItems.length / rowsPerPage)}`;
+
+    document.getElementById("prev").disabled = currentPage === 1;
+    document.getElementById("next").disabled =
+        currentPage === Math.ceil(filteredItems.length / rowsPerPage);
+}
+
+document.getElementById("prev").onclick = () => {
+    if (currentPage > 1) {
+        currentPage--;
+        renderPage();
     }
+};
 
-    // Encode query
-    q = encodeURIComponent(q);
-
-    // Search API
-    const url =
-        `${apiUrl}/search?casesensitive=false&item%20no=${q}` +
-        `&part%20no=${q}&description=${q}&category=${q}&qty=${q}`;
-
-    try {
-        const res = await fetch(url);
-        const data = await res.json();
-        display(data);
-    } catch (e) {
-        console.error("Error fetching:", e);
+document.getElementById("next").onclick = () => {
+    if (currentPage < Math.ceil(filteredItems.length / rowsPerPage)) {
+        currentPage++;
+        renderPage();
     }
+};
+
+// ------------------- SEARCH (LOCAL FAST FILTER) -------------------
+document.getElementById("search").addEventListener("input", () => {
+    const q = document.getElementById("search").value.toLowerCase();
+
+    filteredItems = allItems.filter(row =>
+        (row["item no "] || "").toLowerCase().includes(q) ||
+        (row["part no "] || "").toLowerCase().includes(q) ||
+        (row["description "] || "").toLowerCase().includes(q) ||
+        (row["category "] || "").toLowerCase().includes(q) ||
+        (row["qty"] || "").toLowerCase().includes(q)
+    );
+
+    currentPage = 1;
+    renderPage();
 });
-
 </script>
 
 </body>
