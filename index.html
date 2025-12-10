@@ -1,203 +1,142 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Inventory Finder</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f0f2f5;
-            margin: 0;
-            padding: 0;
-            text-align: center;
-        }
-        h1 {
-            margin-top: 20px;
-        }
-        #search {
-            width: 80%;
-            padding: 12px;
-            margin: 20px auto;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 16px;
-        }
-        table {
-            width: 80%;
-            margin: 20px auto;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        th, td {
-            padding: 14px;
-            border-bottom: 1px solid #eee;
-        }
-        th {
-            background: #e8efff;
-            font-weight: bold;
-        }
-        #pagination {
-            margin-top: 20px;
-            font-size: 18px;
-        }
-        button {
-            padding: 8px 14px;
-            margin: 5px;
-            border: none;
-            border-radius: 6px;
-            background: #4a7afe;
-            color: white;
-            cursor: pointer;
-        }
-        button:disabled {
-            background: #999;
-            cursor: not-allowed;
-        }
-        #jumpInput {
-            width: 60px;
-            padding: 6px;
-            margin-left: 10px;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Spare Parts Data</title>
+<style>
+    body { font-family: Arial; margin: 20px; }
+    input { padding: 8px; width: 300px; margin-bottom: 15px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #f3f3f3; }
+    .pagination { margin-top: 15px; }
+    .pagination button { padding: 8px 12px; margin-right: 5px; }
+</style>
 </head>
 <body>
 
-<h1>Inventory Finder</h1>
-<input type="text" id="search" placeholder="Search: part no, description, category…">
+<h2>Spare Parts Search</h2>
+
+<input type="text" id="search" placeholder="Search part / description / category / qty">
 
 <table>
     <thead>
         <tr>
-            <th>ITEM NO</th>
-            <th>PART NO</th>
-            <th>DESCRIPTION</th>
-            <th>CATEGORY</th>
-            <th>QTY</th>
+            <th>S.No</th>
+            <th>Item No</th>
+            <th>Part No</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Qty</th>
         </tr>
     </thead>
     <tbody id="table-body"></tbody>
 </table>
 
-<div id="pagination">
-    <button id="prevBtn">Prev</button>
-    <span id="pageInfo"></span>
-    <button id="nextBtn">Next</button>
-
-    <span>Jump to page:</span>
-    <input type="number" id="jumpInput" min="1">
-    <button id="jumpBtn">Go</button>
+<div class="pagination">
+    <button id="prev-page">Prev</button>
+    <span id="page-info"></span>
+    <button id="next-page">Next</button>
 </div>
 
+<br>
+
+<input type="number" id="jumpPage" placeholder="Go to page" style="width:120px;">
+<button onclick="jumpToPage()">Go</button>
+
 <script>
-const apiUrl = "https://sheetdb.io/api/v1/bykhl1ncapip9";
-
-// data
 let items = [];
-
-// pagination settings
 let currentPage = 1;
-let perPage = 50; // shows 50 rows per page
-let totalPages = 1;
+const perPage = 50;
 
-fetch(apiUrl)
-    .then(r => r.json())
-    .then(data => {
-        items = data;
-        totalPages = Math.ceil(items.length / perPage);
-        displayPage();
-    });
+// FETCH DATA FROM SHEETDB
+fetch("https://sheetdb.io/api/v1/YOUR_SHEETDB_ID")
+.then(res => res.json())
+.then(data => {
+    items = data.map(cleanKeys);
+    render();
+});
 
-function displayPage() {
-    const start = (currentPage - 1) * perPage;
-    const end = start + perPage;
-    const rowsToShow = items.slice(start, end);
-    display(rowsToShow);
-
-    document.getElementById("pageInfo").innerText =
-        `Page ${currentPage} / ${totalPages}`;
-
-    document.getElementById("prevBtn").disabled = currentPage === 1;
-    document.getElementById("nextBtn").disabled = currentPage === totalPages;
+// CLEAN KEYS (remove trailing spaces)
+function cleanKeys(row) {
+    let fixed = {};
+    for (let key in row) {
+        fixed[key.trim()] = (row[key] + "").trim();
+    }
+    return fixed;
 }
 
+// DISPLAY ITEMS IN TABLE
 function display(list) {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
 
-    list.forEach(row => {
+    const startIndex = (currentPage - 1) * perPage;
+
+    list.forEach((row, index) => {
         tbody.innerHTML += `
             <tr>
-                <td>${row["item no "] || ""}</td>
-                <td>${row["part no "] || ""}</td>
-                <td>${row["description "] || ""}</td>
-                <td>${row["category "] || ""}</td>
+                <td>${startIndex + index + 1}</td>
+                <td>${row["item no"] || ""}</td>
+                <td>${row["part no"] || ""}</td>
+                <td>${row["description"] || ""}</td>
+                <td>${row["category"] || ""}</td>
                 <td>${row["qty"] || ""}</td>
             </tr>
         `;
     });
 }
 
-// NEXT page
-document.getElementById("nextBtn").onclick = () => {
-    if (currentPage < totalPages) {
-        currentPage++;
-        displayPage();
-    }
-};
+// MAIN RENDER FUNCTION (pagination + search)
+function render() {
+    let q = document.getElementById("search").value.toLowerCase();
 
-// PREV page
-document.getElementById("prevBtn").onclick = () => {
-    if (currentPage > 1) {
-        currentPage--;
-        displayPage();
-    }
-};
+    let filtered = items.filter(row =>
+        (row["item no"] || "").toLowerCase().includes(q) ||
+        (row["part no"] || "").toLowerCase().includes(q) ||
+        (row["description"] || "").toLowerCase().includes(q) ||
+        (row["category"] || "").toLowerCase().includes(q) ||
+        (row["qty"] || "").toLowerCase().includes(q)
+    );
+
+    let totalPages = Math.ceil(filtered.length / perPage);
+
+    if (currentPage > totalPages) currentPage = totalPages || 1;
+
+    let start = (currentPage - 1) * perPage;
+    let end = start + perPage;
+
+    display(filtered.slice(start, end));
+
+    document.getElementById("page-info").innerText =
+        "Page " + currentPage + " of " + totalPages;
+}
+
+// SEARCH INPUT LISTENER
+document.getElementById("search").addEventListener("input", () => {
+    currentPage = 1;
+    render();
+});
+
+// PAGINATION BUTTONS
+document.getElementById("prev-page").addEventListener("click", () => {
+    if (currentPage > 1) currentPage--;
+    render();
+});
+
+document.getElementById("next-page").addEventListener("click", () => {
+    currentPage++;
+    render();
+});
 
 // JUMP TO PAGE
-document.getElementById("jumpBtn").onclick = () => {
-    let p = parseInt(document.getElementById("jumpInput").value);
-    if (p >= 1 && p <= totalPages) {
+function jumpToPage() {
+    let p = parseInt(document.getElementById("jumpPage").value);
+    if (!isNaN(p) && p > 0) {
         currentPage = p;
-        displayPage();
+        render();
     }
-};
-
-// ADVANCED SMART SEARCH
-document.getElementById("search").addEventListener("input", () => {
-    let q = document.getElementById("search").value.toLowerCase().trim();
-    let keywords = q.split(" ").filter(k => k.length > 0);
-
-    if (keywords.length === 0) {
-        // reset pagination
-        currentPage = 1;
-        totalPages = Math.ceil(items.length / perPage);
-        displayPage();
-        return;
-    }
-
-    let filtered = items.filter(row => {
-        let combined = (
-            (row["item no "] || "") + " " +
-            (row["part no "] || "") + " " +
-            (row["description "] || "") + " " +
-            (row["category "] || "") + " " +
-            (row["qty"] || "")
-        ).toLowerCase();
-
-        // every word must match
-        return keywords.every(kw => combined.includes(kw));
-    });
-
-    currentPage = 1;
-    totalPages = Math.ceil(filtered.length / perPage);
-
-    display(filtered.slice(0, perPage));
-
-    document.getElementById("pageInfo").innerText =
-        `Page 1 / ${totalPages}`;
-});
+}
 </script>
 
 </body>
