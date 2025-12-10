@@ -1,3 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Inventory Finder</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+        h1 {
+            margin-top: 20px;
+        }
+        #search {
+            width: 80%;
+            padding: 12px;
+            margin: 20px auto;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+        table {
+            width: 80%;
+            margin: 0 auto;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 14px;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #e8efff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Inventory Finder</h1>
+
+<input id="search" type="text" placeholder="Search part no, description, category…">
+
+<table>
+    <thead>
+        <tr>
+            <th>ITEM NO</th>
+            <th>PART NO</th>
+            <th>DESCRIPTION</th>
+            <th>CATEGORY</th>
+            <th>QTY</th>
+        </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+</table>
+
+<script>
+
+// ✨ Your SheetDB API
+const apiUrl = "https://sheetdb.io/api/v1/bykhl1ncapip9";
+
+// Display rows in table
 function display(list) {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
@@ -5,26 +73,43 @@ function display(list) {
     list.forEach(row => {
         tbody.innerHTML += `
             <tr>
-                <td>${row["item no"] || ""}</td>
-                <td>${row["part no"] || ""}</td>
-                <td>${row["description"] || ""}</td>
-                <td>${row["category"] || ""}</td>
+                <td>${row["item no "] || ""}</td>
+                <td>${row["part no "] || ""}</td>
+                <td>${row["description "] || ""}</td>
+                <td>${row["category "] || ""}</td>
                 <td>${row["qty"] || ""}</td>
             </tr>
         `;
     });
 }
 
-document.getElementById("search").addEventListener("input", () => {
-    const q = document.getElementById("search").value.toLowerCase();
+// 🔎 Search-before-fetch (FAST)
+document.getElementById("search").addEventListener("input", async () => {
+    let q = document.getElementById("search").value.trim();
 
-    const filtered = items.filter(row =>
-        (row["item no"] || "").toLowerCase().includes(q) ||
-        (row["part no"] || "").toLowerCase().includes(q) ||
-        (row["description"] || "").toLowerCase().includes(q) ||
-        (row["category"] || "").toLowerCase().includes(q) ||
-        (row["qty"] || "").toLowerCase().includes(q)
-    );
+    if (q.length === 0) {
+        document.getElementById("table-body").innerHTML = "";
+        return;
+    }
 
-    display(filtered);
+    // Encode query
+    q = encodeURIComponent(q);
+
+    // Search API
+    const url =
+        `${apiUrl}/search?casesensitive=false&item%20no=${q}` +
+        `&part%20no=${q}&description=${q}&category=${q}&qty=${q}`;
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        display(data);
+    } catch (e) {
+        console.error("Error fetching:", e);
+    }
 });
+
+</script>
+
+</body>
+</html>
