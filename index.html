@@ -650,6 +650,12 @@ if (!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
                 els.search.value = data.value;
                 currentPage = 1;
                 render();
+                
+                // === FIX: CLOSE MODAL IF OPEN ===
+                if (els.qrBackdrop.style.display !== 'none') {
+                    closeAllScanners();
+                }
+                
                 autoReadEnabled = false; 
                 document.getElementById('readToggle').checked = false;
                 els.readLabel.textContent = "Read OFF";
@@ -724,6 +730,15 @@ function showMobileConnect(type) {
     // Show Mobile View
     els.mobileView.style.display = 'block';
     
+    // === FIX: FORCE READ ON ===
+    // If user didn't have Read ON, force it so the PC listens for the phone
+    if(!autoReadEnabled) {
+        autoReadEnabled = true;
+        document.getElementById('readToggle').checked = true;
+        els.readLabel.textContent = "Read ON";
+        els.readLabel.style.color = "var(--primary)";
+    }
+
     // Generate QR
     const currentUrl = window.location.href.split('?')[0]; // Clean URL
     const targetUrl = `${currentUrl}?mobile=1&type=${type}`;
